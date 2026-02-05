@@ -1,106 +1,125 @@
 const canvas = document.getElementById("canvas");
-let ctx = canvas.getContext("2d");
+const ctx = canvas.getContext("2d");
 
-//Obtiene las dimensiones de la pantalla actual
-const window_height = window.innerHeight;
-const window_width = window.innerWidth;
-
-//El canvas tiene las mismas dimensiones que la pantalla
-canvas.height = window_height;
-canvas.width = window_width;
-
+// ==============================
+// CONFIGURACIÓN DEL CANVAS
+// ==============================
+canvas.width = window.innerWidth / 2;
+canvas.height = window.innerHeight / 2;
 canvas.style.background = "#ff8";
 
+// ==============================
+// CLASE CIRCLE
+// ==============================
 class Circle {
   constructor(x, y, radius, color, text, speed) {
-    this.posX = x;
-    this.posY = y;
+    this.x = x;
+    this.y = y;
     this.radius = radius;
     this.color = color;
     this.text = text;
-
     this.speed = speed;
 
-    this.dx = 1 * this.speed;
-    this.dy = 1 * this.speed;
+    this.dx = speed;
+    this.dy = speed;
   }
 
-  draw(context) {
-    context.beginPath();
+  draw(ctx) {
+    ctx.beginPath();
+    ctx.strokeStyle = this.color;
+    ctx.lineWidth = 2;
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.stroke();
 
-    context.strokeStyle = this.color;
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.font = "20px Arial";
-    context.fillText(this.text, this.posX, this.posY);
-
-    context.lineWidth = 2;
-    context.arc(this.posX, this.posY, this.radius, 0, Math.PI * 2, false);
-    context.stroke();
-    context.closePath();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `${this.radius / 2}px Arial`;
+    ctx.fillText(this.text, this.x, this.y);
+    ctx.closePath();
   }
 
-  update(context) {
-    //context.clearRect(0, 0, window_width, window_height);
-
-    this.draw(context);
-
-    //Si el círculo supera el margen derecho entonces se mueve a la izquierda
-    if (this.posX + this.radius > window_width) {
-      this.dx = -this.dx;
+  move() {
+    // Rebote solo con el canvas
+    if (this.x + this.radius >= canvas.width || this.x - this.radius <= 0) {
+      this.dx *= -1;
     }
 
-    //Si el círculo supera el margen izquierdo entonces se mueve a la derecha
-    if (this.posX - this.radius < 0) {
-      this.dx = -this.dx;
+    if (this.y + this.radius >= canvas.height || this.y - this.radius <= 0) {
+      this.dy *= -1;
     }
 
-    //Si el círculo supera el margen superior entonces se mueve hacia abajo
-    if (this.posY - this.radius < 0) {
-      this.dy = -this.dy;
-    }
-
-    //Si el círculo supera el margen inferior entonces se mueve hacia arriba
-    if (this.posY + this.radius > window_height) {
-      this.dy = -this.dy;
-    }
-
-    this.posX += this.dx;
-    this.posY += this.dy;
+    this.x += this.dx;
+    this.y += this.dy;
   }
 }
 
-/* let arrayCircle=[];
+// ==============================
+// UTILIDADES
+// ==============================
+function randomBetween(min, max) {
+  return Math.random() * (max - min) + min;
+}
 
-for(let i=0; i<10;i++){
+function randomPosition(radius, max) {
+  return randomBetween(radius, max - radius);
+}
 
-    let randomX =  Math.random()* window_width;
-    let randomY =  Math.random()* window_height;
-    let randomRadius = Math.floor(Math.random()*100 + 30);
+// ==============================
+// VALIDACIÓN INICIAL (NO JUNTOS)
+// ==============================
+function isOverlapping(newCircle, circles) {
+  for (let c of circles) {
+    const dx = newCircle.x - c.x;
+    const dy = newCircle.y - c.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
 
-    let miCirculo = new Circle(randomX, randomY, randomRadius, 'blue', i+1);
+    if (distance < newCircle.radius + c.radius) {
+      return true;
+    }
+  }
+  return false;
+}
 
-    //Agrega el objeto al array
-    arrayCircle.push(miCirculo);
-    arrayCircle[i].draw(ctx);
-} */
+// ==============================
+// CREACIÓN SEGURA DE CÍRCULOS
+// ==============================
+const circles = [];
 
-let randomX = Math.random() * window_width;
-let randomY = Math.random() * window_height;
-let randomRadius = Math.floor(Math.random() * 100 + 30);
+function createCircleSafe(color, text) {
+  let circle;
+  let safe = false;
 
-let miCirculo = new Circle(randomX, randomY, randomRadius, "blue", "Tec1", 5);
-miCirculo.draw(ctx);
+  while (!safe) {
+    const radius = randomBetween(25, 60);
+    const x = randomPosition(radius, canvas.width);
+    const y = randomPosition(radius, canvas.height);
+    const speed = randomBetween(1, 4);
 
-let miCirculo2 = new Circle(randomX, randomY, randomRadius, "red", "Tec2", 2);
-miCirculo2.draw(ctx);
+    circle = new Circle(x, y, radius, color, text, speed);
+    safe = !isOverlapping(circle, circles);
+  }
 
-let updateCircle = function () {
-  requestAnimationFrame(updateCircle);
-  ctx.clearRect(0, 0, window_width, window_height);
-  miCirculo.update(ctx);
-  miCirculo2.update(ctx);
-};
+  return circle;
+}
 
-updateCircle();
+// ==============================
+// CÍRCULOS
+// ==============================
+circles.push(createCircleSafe("blue", "Tec1"));
+circles.push(createCircleSafe("red", "Tec2"));
 
+// ==============================
+// ANIMACIÓN
+// ==============================
+function animate() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  for (let circle of circles) {
+    circle.move();
+    circle.draw(ctx);
+  }
+
+  requestAnimationFrame(animate);
+}
+
+animate();
